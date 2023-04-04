@@ -66,11 +66,17 @@ func docker_cli() {
 	err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
 	handle_error(err)
 
-	_, err = cli.ContainerWait(ctx, resp.ID)
-	handle_error(err)
+	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNextExit)
+	select {
+		case err := <-errCh:
+			handle_error(err)
+		case status := <-statusCh:
+			// Print the exit code of the container
+			fmt.Printf("Container exited with status %d\n", status.StatusCode)
+	}
 
 	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
-		ShowStdout: false,
+		ShowStdout: true,
 		ShowStderr: true,
 	})
 	handle_error(err)
