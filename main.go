@@ -96,7 +96,7 @@ func docker_cli() {
 
 func clone_repo() {
 	repoURL := "ssh://git@localhost:2222/srv/repo"
-	cloneDir := "/workspace/empty/test/clone_test"
+	cloneDir := "/clone_dir"
 
 	password := "123"
 
