@@ -11,6 +11,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 )
 
 func setup_routes() {
@@ -68,11 +71,11 @@ func docker_cli() {
 
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNextExit)
 	select {
-		case err := <-errCh:
-			handle_error(err)
-		case status := <-statusCh:
-			// Print the exit code of the container
-			fmt.Printf("Container exited with status %d\n", status.StatusCode)
+	case err := <-errCh:
+		handle_error(err)
+	case status := <-statusCh:
+		// Print the exit code of the container
+		fmt.Printf("Container exited with status %d\n", status.StatusCode)
 	}
 
 	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
@@ -91,8 +94,34 @@ func docker_cli() {
 	// }
 }
 
+func clone_repo() {
+	repoURL := "ssh://git@localhost:2222/srv/repo"
+	cloneDir := "/workspace/empty/test/clone_test"
+
+	password := "123"
+
+	// Create an Auth object with password
+	auth := &ssh.Password{
+		User:     "git", // Replace with your username
+		Password: password,
+	}
+
+	// Clone the repository with the provided authentication
+	_, err := git.PlainClone(cloneDir, false, &git.CloneOptions{
+		URL:  repoURL,
+		Auth: auth,
+	})
+
+
+	if err != nil {
+		fmt.Println("Failed to clone repository:", err)
+		os.Exit(1)
+	}
+}
+
 func main() {
-	docker_cli()
+	// docker_cli()
+	clone_repo()
 	// setup_routes()
 	// http.ListenAndServe(":8080", nil)
 }
