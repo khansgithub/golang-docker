@@ -10,12 +10,25 @@ docker run \
      --health-interval=10s \
 	alpine
 
-ssh-keyscan -p 2222 localhost >> ~/.ssh/known_hosts
 cd repo
 git init
-git add *
+touch foo
+git add foo
 git config --local user.name "foo"
 git config --local user.email "foo@bar.com"
 git commit -m "initial commit"
-mkdir ~/clone_dir
-sudo ln -s ~/clone_dir clone_dir
+cd ~
+mkdir clone_dir
+sudo ln -s ~/clone_dir /clone_dir
+
+# Wait for the container to become healthy
+while true; do
+    HEALTH=$(docker inspect --format='{{.State.Health.Status}}' my-container)
+    if [ "$HEALTH" == "healthy" ]; then
+        ssh-keyscan -p 2222 localhost >> ~/.ssh/known_hosts
+        break
+    else
+        true
+    fi
+    sleep 5
+done
