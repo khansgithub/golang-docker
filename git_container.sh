@@ -1,3 +1,5 @@
+#!/bin/bash
+
 docker run \
 	-d \
 	--name git \
@@ -23,7 +25,7 @@ sudo ln -s ~/clone_dir /clone_dir
 
 # Wait for the container to become healthy
 while true; do
-    HEALTH=$(docker inspect --format='{{.State.Health.Status}}' my-container)
+    HEALTH=$(docker inspect --format='{{.State.Health.Status}}' git)
     if [ "$HEALTH" == "healthy" ]; then
         ssh-keyscan -p 2222 localhost >> ~/.ssh/known_hosts
         break
