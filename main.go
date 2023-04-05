@@ -14,9 +14,27 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+
+	"github.com/gin-gonic/gin"
 )
 
-func setup_routes() {
+func post_root(c *gin.Context){
+	defer check()
+	
+}
+
+func check() {
+	// if r := recover(); r != nil {
+	// 	fmt.Println("There was a panic")
+	// 	fmt.Println(r)
+	// }
+}
+
+
+func setup_router() {
+	router := gin.Default()
+	router.POST("/", post_root)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, World!")
 	})
@@ -112,7 +130,6 @@ func clone_repo() {
 		Auth: auth,
 	})
 
-
 	if err != nil {
 		fmt.Println("Failed to clone repository:", err)
 		os.Exit(1)
@@ -121,9 +138,9 @@ func clone_repo() {
 
 func main() {
 	// docker_cli()
-	clone_repo()
-	// setup_routes()
-	// http.ListenAndServe(":8080", nil)
+	// clone_repo()
+	r := setup_router()
+	r.Run(":8080")
 }
 
 func handle_error(err error) {
