@@ -16,12 +16,9 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 
 	"github.com/gin-gonic/gin"
-)
 
-func post_root(c *gin.Context){
-	defer check()
-	
-}
+	"golang.org/x/sync/errgroup"
+)
 
 func check() {
 	// if r := recover(); r != nil {
@@ -30,21 +27,74 @@ func check() {
 	// }
 }
 
-
-func setup_router() {
+func setup_router() *gin.Engine {
 	router := gin.Default()
-	router.POST("/", post_root)
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, World!")
-	})
-
-	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, World!")
-	})
+	router.POST("/workflow/:workflow_name", post_root)
+	return router
 }
 
-func docker_cli() {
+func post_root(c *gin.Context) {
+	defer check()
+
+	output_ch := make(chan string, 1)
+	workflow_name := c.Param("workflow_name")
+	error_group.Go(func() error {
+		return create_python_workflow(workflow_name, output_ch)
+	})
+	err := error_group.Wait()
+	handle_error(err)
+
+	c.Status(http.StatusOK)
+}
+
+func create_python_workflow(workflow_name string, output_ch chan string) error {
+	defer close(output_ch)
+	ctx := context.Background()
+	container_configs := NewContainerConfig(workflow_name)
+	resp, err := docker_cli.ContainerCreate(
+		ctx,
+		container_configs.Config,
+		container_configs.HostConfig,
+		nil, nil,
+		container_configs.ContainerName
+	)
+	handle_error(err)
+
+	output_ch <- "Container ID: " + resp.ID
+
+	// err = docker_cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
+	// handle_error(err)
+
+	return err
+}
+
+type ContainerConfigs struct {
+	Config        *container.Config
+	HostConfig    *container.HostConfig
+	ContainerName string
+}
+
+func NewContainerConfig(workflow_name string) *ContainerConfigs {
+	workdir := "/usr/home"
+	imageName := "python:latest"
+	containerName := workflow_name + "_workflow"
+	hostPath := "/clone_dir/" + workflow_name
+	containerPath := "/usr/home/" + workflow_name
+
+	config := &container.Config{
+		Image:      imageName,
+		Cmd:        []string{"python", "-u", workflow_name},
+		WorkingDir: workdir,
+	}
+
+	hostConfig := &container.HostConfig{
+		Binds: []string{fmt.Sprintf("%s:%s", hostPath, containerPath)},
+	}
+
+	return &ContainerConfigs{config, hostConfig, containerName}
+}
+
+func docker_cli_f() {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	handle_error(err)
 
@@ -136,9 +186,17 @@ func clone_repo() {
 	}
 }
 
+var error_group errgroup.Group
+var docker_cli *client.Client
+
 func main() {
 	// docker_cli()
-	// clone_repo()
+	clone_repo()
+	var err error;
+	error_group = new(errgroup.Group)
+	docker_cli, err = client.NewClientWithOpts(client.FromEnv)
+	handle_error(err)
+	
 	r := setup_router()
 	r.Run(":8080")
 }
