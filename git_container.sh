@@ -6,7 +6,7 @@ docker run \
 	-v "$(pwd)/"entrypoint.sh:/usr/home/entrypoint.sh \
     -v "$(pwd)/"repo:/srv/repo \
 	--entrypoint "/usr/home/entrypoint.sh" \
-	-p 2222:22 \
+	-p 2220:22 \
     --rm \
      --health-cmd "set -e;  nc -zv localhost 22; if [ $? -eq 0 ]; then exit 0; else exit 1; fi" \
      --health-interval=10s \

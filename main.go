@@ -44,6 +44,8 @@ func post_root(c *gin.Context) {
 	err := error_group.Wait()
 	handle_error(err)
 
+	fmt.Println(<-output_ch)
+
 	c.Status(http.StatusOK)
 }
 
@@ -163,7 +165,7 @@ func docker_cli_f() {
 }
 
 func clone_repo() {
-	repoURL := "ssh://git@localhost:2222/srv/repo"
+	repoURL := "ssh://git@localhost:2220/srv/repo"
 	cloneDir := "/clone_dir"
 
 	password := "123"
@@ -186,15 +188,37 @@ func clone_repo() {
 	}
 }
 
+func pull_images(){
+	ctx := context.Background()
+	reader, err := docker_cli.ImagePull(ctx, "python:latest", types.ImagePullOptions{})
+	if err != nil {
+		panic(err)
+	}
+	defer reader.Close()
+
+	// Print the output from the pull
+	buf := make([]byte, 4096)
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			fmt.Print(string(buf[0:n]))
+		}
+		if err != nil {
+			break
+		}
+	}
+}
+
 var error_group *errgroup.Group
 var docker_cli *client.Client
 
 func main() {
 	// docker_cli()
-	clone_repo()
+	// clone_repo()
 	var err error
 	error_group = new(errgroup.Group)
 	docker_cli, err = client.NewClientWithOpts(client.FromEnv)
+	pull_images()
 	handle_error(err)
 
 	r := setup_router()
