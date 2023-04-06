@@ -56,7 +56,7 @@ func create_python_workflow(workflow_name string, output_ch chan string) error {
 		container_configs.Config,
 		container_configs.HostConfig,
 		nil, nil,
-		container_configs.ContainerName
+		container_configs.ContainerName,
 	)
 	handle_error(err)
 
@@ -186,17 +186,17 @@ func clone_repo() {
 	}
 }
 
-var error_group errgroup.Group
+var error_group *errgroup.Group
 var docker_cli *client.Client
 
 func main() {
 	// docker_cli()
 	clone_repo()
-	var err error;
+	var err error
 	error_group = new(errgroup.Group)
 	docker_cli, err = client.NewClientWithOpts(client.FromEnv)
 	handle_error(err)
-	
+
 	r := setup_router()
 	r.Run(":8080")
 }
