@@ -62,10 +62,10 @@ func create_python_workflow(workflow_name string, output_ch chan string) error {
 	)
 	handle_error(err)
 
-	output_ch <- "Container ID: " + resp.ID
+	output_ch <- ">>>>>>> Container ID: " + resp.ID
 
-	// err = docker_cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
-	// handle_error(err)
+	err = docker_cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
+	handle_error(err)
 
 	return err
 }
@@ -189,6 +189,7 @@ func clone_repo() {
 }
 
 func pull_images(){
+	fmt.Println("Pulling python:latest ...")
 	ctx := context.Background()
 	reader, err := docker_cli.ImagePull(ctx, "python:latest", types.ImagePullOptions{})
 	if err != nil {
@@ -199,14 +200,12 @@ func pull_images(){
 	// Print the output from the pull
 	buf := make([]byte, 4096)
 	for {
-		n, err := reader.Read(buf)
-		if n > 0 {
-			fmt.Print(string(buf[0:n]))
-		}
+		_, err := reader.Read(buf)
 		if err != nil {
 			break
 		}
 	}
+	fmt.Println("Image pulled")
 }
 
 var error_group *errgroup.Group
@@ -218,8 +217,8 @@ func main() {
 	var err error
 	error_group = new(errgroup.Group)
 	docker_cli, err = client.NewClientWithOpts(client.FromEnv)
-	pull_images()
 	handle_error(err)
+	pull_images()
 
 	r := setup_router()
 	r.Run(":8080")
