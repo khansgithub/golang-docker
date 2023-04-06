@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -34,18 +35,35 @@ func setup_router() *gin.Engine {
 	return router
 }
 
-func get_container_output(c *gin.Context){
+func get_container_output(c *gin.Context) {
+	container_id := c.Param("container_id")
 	ctx := context.Background()
-	
-	out, err := docker_cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
+
+	out, err := docker_cli.ContainerLogs(ctx, container_id, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	})
-	handle_ch_error(error_ch, err)
 	defer out.Close()
 
-	_, err = io.Copy(os.Stdout, out)
-	handle_ch_error(error_ch, err)
+	bodyBytes, err := io.ReadAll(out)
+	handle_error(err)
+	bodyBytes = bytes.Trim(bodyBytes, "\x00")
+
+	str := fmt.Sprintf("%s", bodyBytes)
+	// var str string
+	// for len(bodyBytes) > 0 {
+	// 	r, size := utf8.DecodeRune(bodyBytes)
+	// 	str += string(r)
+	// 	bodyBytes = bodyBytes[size:]
+	// }
+
+	// bodyString := string(bodyBytes)
+	res := struct {
+		Output string `json:"output"`
+	}{Output: str}
+	c.JSON(http.StatusOK, res)
+	return
+
 }
 
 func post_root(c *gin.Context) {
@@ -55,19 +73,19 @@ func post_root(c *gin.Context) {
 	error_ch := make(chan error, 1)
 	workflow_name := c.Param("workflow_name")
 	go create_python_workflow(workflow_name, container_id_ch, error_ch)
-	
+
 	conatiner_id := <-container_id_ch
 	c.String(http.StatusOK, conatiner_id)
 }
 
-func handle_ch_error(error_ch chan error, err error){
-	if err != nil{
-		error_ch<-err
+func handle_ch_error(error_ch chan error, err error) {
+	if err != nil {
+		error_ch <- err
 		panic(err)
 	}
 }
 
-func create_python_workflow(workflow_name string, container_id_ch chan string, error_ch chan error){
+func create_python_workflow(workflow_name string, container_id_ch chan string, error_ch chan error) {
 	output_ch := make(chan string, 1)
 	defer close(output_ch)
 	ctx := context.Background()
@@ -194,7 +212,6 @@ func handle_error(err error) {
 		panic(err)
 	}
 }
-
 
 func docker_cli_f() {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
